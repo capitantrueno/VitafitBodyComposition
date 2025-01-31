@@ -51,7 +51,7 @@ export default function Garmin() {
 
     const preapareApiRequest = () => {
         const bodyFatFree = parseFloat(weight) * (1 - (parseFloat(fat ?? 0))*0.01);
-        const protein = bodyFatFree * (parseFloat(muscleMass ?? 0));
+        const protein = bodyFatFree * (parseFloat(muscleMass ?? 0) * 0.01);
         const payload =
         {
             timeStamp: -1,
