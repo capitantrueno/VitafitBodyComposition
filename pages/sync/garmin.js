@@ -50,6 +50,8 @@ export default function Garmin() {
     }
 
     const preapareApiRequest = () => {
+        const bodyFatFree = parseFloat(weight) * (1 - (parseFloat(fat ?? 0))*0.01);
+        const protein = bodyFatFree * (parseFloat(muscleMass ?? 0));
         const payload =
         {
             timeStamp: -1,
@@ -57,7 +59,7 @@ export default function Garmin() {
             percentFat: parseFloat(fat ?? 0),
             percentHydration: parseFloat(waterPercentage ?? 0),
             boneMass: parseFloat(boneMass ?? 0),
-            muscleMass: parseFloat(muscleMass ?? 0),
+            muscleMass: protein ?? 0,
             visceralFatRating: parseFloat(visceralFat ?? 0),
             physiqueRating: parseFloat(bodyType ?? 0),
             metabolicAge: parseFloat(metabolicAge ?? 0),
@@ -240,7 +242,7 @@ export default function Garmin() {
                                 />
                             </label>
                             <label className="block">
-                                <span className="text-gray-700">Muscle Mass (kg)</span>
+                                <span className="text-gray-700">Muscle Mass (Protein %)</span>
                                 <input
                                     type="number"
                                     name="muscleMass"
