@@ -2,7 +2,7 @@
 
 Web App to export data from Mi Body Composition Scale and upload it to Garmin Connect Cloud. It also allows you to upload manually entered body composition data to the Garmin cloud. The Application works on any browser that support Web Bluetooth API. You can get rid off Mi Fit / Zepp Life for Xiaomi Body Composition Scale 2.
 
-Application URL: https://web-body-composition.vercel.app/
+Application URL: https://vitafit-body-composition.vercel.app/
 
 ## iOS / iPadOS (iPhone/iPad)
 
