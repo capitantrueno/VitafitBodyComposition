@@ -348,7 +348,7 @@ export default function Garmin() {
                                 />
                             </label>
                         </div>
-                        <label className="block">
+                        {/* <label className="block">
                             <span className="text-gray-700">Physique Raiting</span>
                             <input
                                 type="number"
@@ -367,7 +367,7 @@ export default function Garmin() {
                       "
                                 placeholder=""
                             />
-                        </label>
+                        </label> */}
 
 
                         {!isTokenSaved && <label className="block mt-10">
