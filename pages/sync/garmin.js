@@ -61,7 +61,6 @@ export default function Garmin() {
             boneMass: parseFloat(boneMass ?? 0),
             muscleMass: protein ?? 0,
             visceralFatRating: parseFloat(visceralFat ?? 0),
-            physiqueRating: parseFloat(bodyType ?? 0),
             metabolicAge: parseFloat(metabolicAge ?? 0),
             bodyMassIndex: parseFloat(bmi ?? 0),
             email,
