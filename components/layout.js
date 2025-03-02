@@ -9,7 +9,7 @@ export default function Layout({ children }) {
                 <title>Vitafit Body Composition</title>
                 <meta
                     name="description"
-                    content="Web App to export data from Vitafit Scale and upload it to Garmin Connect Cloud"
+                    content="Web App to export data from Vitafit Scale and upload it to Garmin Connect Cloud and Intervals.icu"
                     key="desc"
                 />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />

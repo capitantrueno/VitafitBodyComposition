@@ -19,11 +19,11 @@ export default function Home() {
             >  Mi Scale Scanner
             </button>
           </Link> */}
-          <Link href="/sync/garmin" passHref className='m-5 w-full mr-auto ml-auto'>
+          <Link href="/sync/bodycomposition" passHref className='m-5 w-full mr-auto ml-auto'>
             <button
               type="submit"
               className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full'
-            > Manual Garmin Connect Import
+            > Sync to Garmin and/or Intervals
             </button>
           </Link>
           <Link href="/faq" passHref className='m-5 w-full mr-auto ml-auto'>
@@ -33,13 +33,6 @@ export default function Home() {
             > FAQ
             </button>
           </Link>
-          {/* <Link href="https://play.google.com/store/apps/details?id=com.lukaszswiderski.MiScaleExporter" target='_blank' className='m-5 w-full mr-auto ml-auto'>
-            <button
-              type="submit"
-              className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full'
-            > Android Application
-            </button>
-          </Link> */}
           <Link href="https://github.com/capitantrueno/VitafitBodyComposition" target='_blank' className='m-5 w-full mr-auto ml-auto'>
             <button
               type="submit"
