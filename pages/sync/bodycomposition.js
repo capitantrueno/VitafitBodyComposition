@@ -3,7 +3,6 @@ import Link from 'next/link'
 import axios from 'axios';
 import useLocalStorageState from 'use-local-storage-state'
 import { useBodyCompositionContext } from '../../contexts/bodycomposition.context';
-import { Garmin } from './garmin';
 
 export default function BodyComposition() {
     const { bodyComposition, setBodyComposition } = useBodyCompositionContext();
@@ -56,8 +55,15 @@ export default function BodyComposition() {
     const isGarminTokenSaved = saveGarminToken && garminAccessToken && garminTokenSecret;
 
     const clearTokens = async () => {
+        clearGarminTokens();
+        clearIntervalsToken();
+    }
+    const clearGarminTokens = async () => {
         setGarminAccessToken('');
         setGarminTokenSecret('');
+    }
+    const clearIntervalsToken = async () => {
+        setIntervalsApiKey('');
     }
 
     const [syncToIntervals, setSyncToIntervals] = useLocalStorageState('syncToIntervals', { defaultValue: false });
@@ -78,6 +84,15 @@ export default function BodyComposition() {
         defaultValue: false
     });
 
+    useEffect(() => {
+        let value;
+        value = (localStorage.getItem("saveIntervalsApiKey") || false) === 'true'
+        setSaveIntervalsApiKey(value)
+    }, [])
+    const checkSaveIntervalsApiKeyHandler = () => {
+        localStorage.setItem("saveIntervalsApiKey", !saveIntervalsApiKey)
+        setSaveIntervalsApiKey(!saveIntervalsApiKey)
+    }
     const isIntervalsApiKeySaved = saveIntervalsApiKey && intervalsApiKey;
 
     const preapareApiRequest = () => {
@@ -94,12 +109,6 @@ export default function BodyComposition() {
             visceralFatRating: parseFloat(visceralFat ?? 0),
             metabolicAge: parseFloat(metabolicAge ?? 0),
             bodyMassIndex: parseFloat(bmi ?? 0),
-            // email,
-            // password,
-            // mfaCode,
-            // clientId,
-            // accessToken,
-            // tokenSecret,
         }
 
         return payload;
@@ -157,38 +166,100 @@ export default function BodyComposition() {
                 }
             };
 
-            await axios
-                .post('https://frog01-20364.wykr.es/upload', payload, axiosConfig)
-                .then(response => {
-                    console.log(response);
-                    if (saveGarminToken && response.data.uploadResult.accessToken && response.data.uploadResult.tokenSecret) {
-                        setGarminAccessToken(response.data.uploadResult.accessToken);
-                        setGarminTokenSecret(response.data.uploadResult.tokenSecret);
+            if (syncToIntervals) {
+                const base64Encoded = btoa(`API_KEY:${intervalsApiKey}`);
+                const intervalsAxiosConfig = {
+                    headers: {
+                        ...axiosConfig.headers,
+                        'Authorization': `Basic ${base64Encoded}`
                     }
-                    if (response.status === 201) {
-                        alert("Success. Uploaded.");
-                        setShowGarminMFACode(false);
-                    } else if (response.status === 200) {
-                        setShowGarminMFACode(true);
-                        setGarminClientId(response.data.clientId);
-                        alert("MFA/2FA Code required. Please provide it.");
-                    }
-                    else {
-                        alert(`Response Status: ${response.status}`);
-                    }
-                    if (response.status === 401) {
-                        clearTokens();
-                    }
+                };
+                const today = new Date().toISOString().split('T')[0];
+                const { timeStamp, percentFat, percentHydration, boneMass, muscleMass, visceralFat, visceralFatRating, metabolicAge, bodyMassIndex, ...rest } = payload;
+                const intervalsPayload = {
+                    id: today,
+                    BMI: bodyMassIndex,
+                    bodyFat: percentFat,
+                    BoneMass: boneMass,
+                    MuscleMass: muscleMass,
+                    VisceralFat: visceralFat,
+                    Water: percentHydration,
+                    ...rest
+                };
 
-                })
-                .catch(error => {
-                    console.log(error);
-                    const errorMessage = error?.response?.data;
-                    if (errorMessage && errorMessage.includes('401 (Unauthorized)')) {
-                        clearTokens();
-                    }
-                    alert(`${errorMessage}`);
-                });
+                await axios
+                    .put('https://intervals.icu/api/v1/athlete/0/wellness', intervalsPayload, intervalsAxiosConfig)
+                    .then(response => {
+
+                        if (response.status === 201) {
+                            alert("Success. Uploaded to Intervals.");
+                        }
+                        else {
+                            alert(`Response Status: ${response.status}`);
+                        }
+                        if (response.status === 401) {
+                            clearIntervalsToken();
+                        }
+
+                    })
+                    .catch(error => {
+                        console.log(error);
+                        console.table(error);
+
+                        const errorMessage = error?.response?.data;
+                        if (errorMessage && errorMessage.error.includes('401 (Unauthorized)')) {
+                            clearIntervalsToken();
+                        }
+                        alert(`${errorMessage.error}`);
+                    });
+
+            }
+
+            if (syncToGarmin) {
+
+                const garminPayload = {
+                    ...payload,
+                    garminEmail,
+                    garminPassword,
+                    garminMfaCode,
+                    garminClientId,
+                    garminAccessToken,
+                    garminTokenSecret
+                };
+
+                await axios
+                    .post('https://frog01-20364.wykr.es/upload', garminPayload, axiosConfig)
+                    .then(response => {
+                        console.log(response);
+                        if (saveGarminToken && response.data.uploadResult.accessToken && response.data.uploadResult.tokenSecret) {
+                            setGarminAccessToken(response.data.uploadResult.accessToken);
+                            setGarminTokenSecret(response.data.uploadResult.tokenSecret);
+                        }
+                        if (response.status === 201) {
+                            alert("Success. Uploaded.");
+                            setShowGarminMFACode(false);
+                        } else if (response.status === 200) {
+                            setShowGarminMFACode(true);
+                            setGarminClientId(response.data.clientId);
+                            alert("MFA/2FA Code required. Please provide it.");
+                        }
+                        else {
+                            alert(`Response Status: ${response.status}`);
+                        }
+                        if (response.status === 401) {
+                            clearGarminTokens();
+                        }
+
+                    })
+                    .catch(error => {
+                        console.log(error);
+                        const errorMessage = error?.response?.data;
+                        if (errorMessage && errorMessage.includes('401 (Unauthorized)')) {
+                            clearGarminTokens();
+                        }
+                        alert(`${errorMessage}`);
+                    });
+            }
 
         }
         catch (err) {
@@ -381,14 +452,41 @@ export default function BodyComposition() {
 
                         <div className="flex justify-between gap-2">
                             <div className="mt-2">
-                                <input type="checkbox" id="syncToGarmin" checked={syncToGarmin} onChange={checkSyncToGarminHandler} />
-                                <label htmlFor="syncToIntervals" className="ml-2">Sync to Garmin</label>
-                            </div>
-                            <div className="mt-2">
                                 <input type="checkbox" id="syncToIntervals" checked={syncToIntervals} onChange={checkSyncToIntervalsHandler} />
                                 <label htmlFor="syncToIntervals" className="ml-2">Sync to Intervals</label>
                             </div>
+
+                            <div className="mt-2">
+                                <input type="checkbox" id="syncToGarmin" checked={syncToGarmin} onChange={checkSyncToGarminHandler} />
+                                <label htmlFor="syncToIntervals" className="ml-2">Sync to Garmin</label>
+                            </div>
                         </div>
+
+                        {syncToIntervals && !isIntervalsApiKeySaved && <label className="block mt-10">
+                            <span className="text-gray-700">API Key</span>
+                            <input
+                                type="text"
+                                name="apiKey"
+                                value={intervalsApiKey}
+                                onChange={(e) => setIntervalsApiKey(e.target.value)}
+                                required
+                                className="
+                                    mt-1
+                                    block
+                                    w-full
+                                    rounded-md
+                                    border-gray-300
+                                    shadow-sm
+                                    focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50
+                                "
+                                placeholder="Your API Key"
+                            />
+                        </label>}
+                        {syncToIntervals && !isIntervalsApiKeySaved && <div className="mt-2">
+                            <input type="checkbox" id="saveIntervalsApiKey" checked={saveIntervalsApiKey} onChange={checkSaveIntervalsApiKeyHandler} />
+                            <label htmlFor="saveIntervalsApiKey" className="ml-2">remember me (save access token in the browser) </label>
+                        </div>
+                        }
 
                         {syncToGarmin && !isGarminTokenSaved && <label className="block mt-10">
                             <span className="text-gray-700">Email address</span>
@@ -435,94 +533,16 @@ export default function BodyComposition() {
                             <label htmlFor="saveGarminToken" className="ml-2">remember me (save access token in the browser) </label>
                         </div>
                         }
-                        {syncToGarmin && <div className='flex flex-wrap'>
-                            <button
-                                type="submit"
-                                className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-5 ml-auto'
-                            > Send to Garmin Connect
-                            </button>
-                            <div className='flex flex-wrap'>
 
-                                <div className="block text-justify">
-                                    {<a href='#' className="underline block mt-5 mb-2 text-center" onClick={generateFitFile}>
-                                        Generate only .fit file without Email and Password.
-                                    </a>}
-                                    <span>It can be used to manually upload data to the <a href='https://connect.garmin.com/modern/import-data' className="underline" target='_blank' >
-                                        Garmin Connect website
-                                    </a> in case you don&apos;t want to provide your credentials or if the API has a problem with too many requests.</span>
-                                </div>
-                            </div>
+                        {(isGarminTokenSaved || isIntervalsApiKeySaved) && <div className="mt-5">
+                            <label className="block text-center">
+                                {isGarminTokenSaved && <div>Logged at Garmin as <i>{garminEmail}</i></div>}
+                                {isIntervalsApiKeySaved && <div>Logged at Intervals as <i>{intervalsApiKey.length > 5 ? `${intervalsApiKey.substring(0, 5)}...` : intervalsApiKey}</i></div>}
+                                <a href='#' className="underline" onClick={clearTokens}>
+                                    Clear access tokens and change credencials
+                                </a>
+                            </label>
                         </div>}
-
-                        <div className="mt-2">
-                            <input type="checkbox" id="syncToIntervals" checked={syncToIntervals} onChange={checkSyncToIntervalsHandler} />
-                            <label htmlFor="syncToIntervals" className="ml-2">Sync to Intervals</label>
-                        </div>
-                        {syncToIntervals && !isIntervalsApiKeySaved && <label className="block mt-10">
-                            <span className="text-gray-700">API Key</span>
-                            <input
-                                type="text"
-                                name="apiKey"
-                                value={intervalsApiKey}
-                                onChange={(e) => setIntervalsApiKey(e.target.value)}
-                                required
-                                className="
-                                    mt-1
-                                    block
-                                    w-full
-                                    rounded-md
-                                    border-gray-300
-                                    shadow-sm
-                                    focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50
-                                "
-                                placeholder="Your API Key"
-                            />
-                        </label>}
-                        {syncToGarmin && !isGarminTokenSaved && <label className="block">
-                            <span className="text-gray-700">Password</span>
-                            <input
-                                type="password"
-                                name='garminPassword'
-                                value={garminPassword}
-                                onChange={(e) => setGarminPassword(e.target.value)}
-                                required
-                                className="
-                                    mt-1
-                                    block
-                                    w-full
-                                    rounded-md
-                                    border-gray-300
-                                    shadow-sm
-                                    focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50
-                                    "
-                                placeholder="********"
-                            />
-                        </label>}
-                        {syncToGarmin && !isGarminTokenSaved && <div className="mt-2">
-                            <input type="checkbox" id="saveGarminToken" checked={saveGarminToken} onChange={checkSaveGarminTokenHandler} />
-                            <label htmlFor="saveGarminToken" className="ml-2">remember me (save access token in the browser) </label>
-                        </div>
-                        }
-                        {syncToGarmin && <div className='flex flex-wrap'>
-                            <button
-                                type="submit"
-                                className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-5 ml-auto'
-                            > Send to Garmin Connect
-                            </button>
-                            <div className='flex flex-wrap'>
-
-                                <div className="block text-justify">
-                                    {<a href='#' className="underline block mt-5 mb-2 text-center" onClick={generateFitFile}>
-                                        Generate only .fit file without Email and Password.
-                                    </a>}
-                                    <span>It can be used to manually upload data to the <a href='https://connect.garmin.com/modern/import-data' className="underline" target='_blank' >
-                                        Garmin Connect website
-                                    </a> in case you don&apos;t want to provide your credentials or if the API has a problem with too many requests.</span>
-                                </div>
-                            </div>
-                        </div>}
-
-
                         <div className='flex flex-wrap'>
                             <Link href="/" passHref>
                                 <button
@@ -531,6 +551,20 @@ export default function BodyComposition() {
                                 >  &lt; Back
                                 </button>
                             </Link>
+                            <button
+                                type="submit"
+                                className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-5 ml-auto'
+                            > Sync Data
+                            </button>
+                            {syncToGarmin && <div className="block text-justify">
+                                <a href='#' className="underline block mt-5 mb-2 text-center" onClick={generateFitFile}>
+                                    Generate only .fit file without Email and Password.
+                                </a>
+                                <span>It can be used to manually upload data to the <a href='https://connect.garmin.com/modern/import-data' className="underline" target='_blank' >
+                                    Garmin Connect website
+                                </a> in case you don&apos;t want to provide your credentials or if the API has a problem with too many requests.</span>
+
+                            </div>}
                         </div>
 
                     </form>
