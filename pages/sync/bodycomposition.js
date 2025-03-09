@@ -228,7 +228,7 @@ export default function BodyComposition() {
                 };
 
                 await axios
-                    .post('https://frog01-20364.wykr.es/upload', garminPayload, axiosConfig)
+                    .post('https://yet-another-garmin-connect-client.onrender.com/upload', garminPayload, axiosConfig)
                     .then(response => {
                         console.log(response);
                         if (saveGarminToken && response.data.uploadResult.accessToken && response.data.uploadResult.tokenSecret) {
