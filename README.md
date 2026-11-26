@@ -157,4 +157,4 @@ Web Bluetooth works on `localhost` without HTTPS in Chrome.
 
 ## Disclaimer
 
-Open source community project, not affiliated with Vitafit or Garmin. Use it at your own risk.
+Open source community project, not affiliated with, endorsed by or sponsored by Vitafit, Garmin, Intervals.icu or Apple. Product names and trademarks belong to their respective owners. Use it at your own risk.

@@ -49,8 +49,8 @@ export default function Faq() {
                         <div>If your account has two-step verification, the app asks for the code: enter it and submit again. &quot;429 (Too Many Requests)&quot; means Garmin is limiting logins: wait a few hours and try once. Check &quot;remember me&quot; so the app saves the Garmin token and does not log in on every upload.</div>
                     </li>
                     <li className='mb-5'>
-                        <div className='font-bold'>8. Garmin and Vitafit</div>
-                        <div>This application is an open source community project with no affiliation with Garmin or Vitafit. You use it at your own risk. You can always check out the source code on Github.</div>
+                        <div className='font-bold'>8. Vitafit, Garmin, Intervals.icu and Apple</div>
+                        <div>This application is an open source community project, not affiliated with, endorsed by or sponsored by Vitafit, Garmin, Intervals.icu or Apple. Product names and trademarks belong to their respective owners. You use it at your own risk. You can always check out the source code on Github.</div>
                     </li>
                     <li className='mb-5'>
                         <div className='font-bold'>9. Feedback & Contact</div>
