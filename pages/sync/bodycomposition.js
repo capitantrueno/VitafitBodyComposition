@@ -5,6 +5,7 @@ import useLocalStorageState from 'use-local-storage-state'
 import { useBodyCompositionContext } from '../../contexts/bodycomposition.context';
 import { yagccUploadUrl } from '../../services/config';
 import { appleHealthShortcutUrl } from '../../services/appleHealth';
+import { intervalsSuccessMessage, intervalsErrorMessage, garminResponseMessage, garminErrorMessage } from '../../services/syncMessages';
 
 export default function BodyComposition() {
     const { bodyComposition, setBodyComposition } = useBodyCompositionContext();
@@ -213,28 +214,17 @@ export default function BodyComposition() {
 
                 await axios
                     .put('https://intervals.icu/api/v1/athlete/0/wellness', intervalsPayload, intervalsAxiosConfig)
-                    .then(response => {
-
-                        if (response.status === 201) {
-                            alert("Success. Uploaded to Intervals.");
-                        }
-                        else {
-                            alert(`Response Status: ${response.status}`);
-                        }
-                        if (response.status === 401) {
-                            clearIntervalsToken();
-                        }
-
+                    .then(() => {
+                        // axios only resolves for 2xx answers
+                        alert(intervalsSuccessMessage());
                     })
                     .catch(error => {
                         console.log(error);
-                        console.table(error);
-
-                        const errorMessage = error?.response?.data;
-                        if (errorMessage && errorMessage.error.includes('401 (Unauthorized)')) {
+                        const { message, clearApiKey } = intervalsErrorMessage(error);
+                        if (clearApiKey) {
                             clearIntervalsToken();
                         }
-                        alert(`${errorMessage.error}`);
+                        alert(message);
                     });
 
             }
@@ -257,33 +247,26 @@ export default function BodyComposition() {
                     .post(yagccUploadUrl(), garminPayload, axiosConfig)
                     .then(response => {
                         console.log(response);
-                        if (saveGarminToken && response.data.uploadResult.accessToken && response.data.uploadResult.tokenSecret) {
-                            setGarminAccessToken(response.data.uploadResult.accessToken);
-                            setGarminTokenSecret(response.data.uploadResult.tokenSecret);
+                        // a TypeError here would end in the .catch below and be shown as "proxy did not answer"
+                        const uploadResult = response.data?.uploadResult;
+                        if (saveGarminToken && uploadResult?.accessToken && uploadResult?.tokenSecret) {
+                            setGarminAccessToken(uploadResult.accessToken);
+                            setGarminTokenSecret(uploadResult.tokenSecret);
                         }
-                        if (response.status === 201) {
-                            alert("Success. Uploaded.");
-                            setShowGarminMFACode(false);
-                        } else if (response.status === 200) {
-                            setShowGarminMFACode(true);
+                        const { message, mfaRequested } = garminResponseMessage(response);
+                        setShowGarminMFACode(mfaRequested);
+                        if (mfaRequested) {
                             setGarminClientId(response.data.clientId);
-                            alert("MFA/2FA Code required. Please provide it.");
                         }
-                        else {
-                            alert(`Response Status: ${response.status}`);
-                        }
-                        if (response.status === 401) {
-                            clearGarminTokens();
-                        }
-
+                        alert(message);
                     })
                     .catch(error => {
                         console.log(error);
-                        const errorMessage = error?.response?.data;
-                        if (errorMessage && errorMessage.includes('401 (Unauthorized)')) {
+                        const { message, clearTokens } = garminErrorMessage(error);
+                        if (clearTokens) {
                             clearGarminTokens();
                         }
-                        alert(`${errorMessage}`);
+                        alert(message);
                     });
             }
 
