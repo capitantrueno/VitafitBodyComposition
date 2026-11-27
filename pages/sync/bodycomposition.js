@@ -3,7 +3,7 @@ import Link from 'next/link'
 import axios from 'axios';
 import useLocalStorageState from 'use-local-storage-state'
 import { useBodyCompositionContext } from '../../contexts/bodycomposition.context';
-import { yagccUploadUrl, bodyCompositionWebApiUploadUrl } from '../../services/config';
+import { yagccUploadUrl } from '../../services/config';
 import { appleHealthShortcutUrl } from '../../services/appleHealth';
 
 export default function BodyComposition() {
@@ -144,7 +144,7 @@ export default function BodyComposition() {
             };
 
             await axios
-                .post(bodyCompositionWebApiUploadUrl(), payload, axiosConfig)
+                .post(yagccUploadUrl(), payload, axiosConfig)
                 .then(response => {
                     // create file link in browser's memory
                     const href = URL.createObjectURL(response.data);
@@ -160,8 +160,11 @@ export default function BodyComposition() {
                     document.body.removeChild(link);
                     URL.revokeObjectURL(href);
                 })
-                .catch(error => {
+                .catch(async error => {
                     console.log(error);
+                    // responseType is 'blob', so the error body is a Blob too
+                    const detail = await error?.response?.data?.text?.();
+                    alert(`.fit file failed: ${detail || error.message}`);
                 });
 
         }
