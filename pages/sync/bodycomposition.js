@@ -7,6 +7,26 @@ import { yagccUploadUrl } from '../../services/config';
 import { appleHealthShortcutUrl } from '../../services/appleHealth';
 import { intervalsSuccessMessage, intervalsErrorMessage, garminResponseMessage, garminErrorMessage } from '../../services/syncMessages';
 
+const Spinner = () => (
+    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+);
+
+// Saves a File through a temporary link. The object URL is revoked later: revoking it right after
+// click() can cancel the download on iOS browsers (Bluefy).
+function downloadFile(file) {
+    const href = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(href), 60000);
+}
+
 export default function BodyComposition() {
     const { bodyComposition, setBodyComposition } = useBodyCompositionContext();
     const [weightKg, setWeightKg] = useState(bodyComposition.weightKg ?? 0);
@@ -132,8 +152,24 @@ export default function BodyComposition() {
         return payload;
     }
 
+    // Text shown in the .fit link while the file is generated (null when idle), and the last generated file.
+    const [fitStatus, setFitStatus] = useState(null);
+    const [fitFile, setFitFile] = useState(null);
+
+    // iOS can share files (Save to Files, AirDrop, Garmin Connect...) when the download does not start.
+    const shareFitFile = async () => {
+        try {
+            await navigator.share({ files: [fitFile], title: fitFile.name });
+        } catch (err) {
+            if (err?.name !== 'AbortError') alert(`.fit file: sharing failed (${err.message}).`);
+        }
+    };
+
     const generateFitFile = async (event) => {
         event.preventDefault();
+        if (fitStatus !== null) return;
+        setFitStatus('Generating .fit file...');
+        setFitFile(null);
         const payload = { ...preapareApiRequest(), createOnlyFile: true };
         try {
             let axiosConfig = {
@@ -147,19 +183,10 @@ export default function BodyComposition() {
             await axios
                 .post(yagccUploadUrl(), payload, axiosConfig)
                 .then(response => {
-                    // create file link in browser's memory
-                    const href = URL.createObjectURL(response.data);
-
-                    // create "a" HTML element with href to file & click
-                    const link = document.createElement('a');
-                    link.href = href;
-                    link.setAttribute('download', `garmin_weight_${(new Date().toJSON().slice(0, 10))}.fit`); //or any other extension
-                    document.body.appendChild(link);
-                    link.click();
-
-                    // clean up "a" element & remove ObjectURL
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(href);
+                    const file = new File([response.data], `garmin_weight_${(new Date().toJSON().slice(0, 10))}.fit`,
+                        { type: 'application/octet-stream' });
+                    setFitFile(file);
+                    downloadFile(file);
                 })
                 .catch(async error => {
                     console.log(error);
@@ -172,6 +199,9 @@ export default function BodyComposition() {
         catch (err) {
             console.log(err);
             alert(`Error: ${err.message}`);
+        }
+        finally {
+            setFitStatus(null);
         }
     }
 
@@ -612,18 +642,22 @@ export default function BodyComposition() {
                                 title={anySyncTarget ? undefined : 'Select at least one service'}
                                 className={`${!anySyncTarget ? 'bg-gray-400 cursor-not-allowed' : syncStatus !== null ? 'bg-blue-700 cursor-wait' : 'bg-blue-500 hover:bg-blue-700'} text-white font-bold py-2 px-4 rounded mt-5 ml-auto inline-flex items-center gap-2`}
                             >
-                                {syncStatus !== null && (
-                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                                    </svg>
-                                )}
+                                {syncStatus !== null && <Spinner />}
                                 {syncStatus ?? 'Sync Data'}
                             </button>
                             {syncToGarmin && <div className="block text-justify">
-                                <a href='#' className="underline block mt-5 mb-2 text-center" onClick={generateFitFile}>
-                                    Generate only .fit file without Email and Password.
+                                <a href='#' aria-disabled={fitStatus !== null}
+                                    className={`underline mt-5 mb-2 flex items-center justify-center gap-2 ${fitStatus !== null ? 'cursor-wait text-gray-500' : ''}`}
+                                    onClick={generateFitFile}>
+                                    {fitStatus !== null && <Spinner />}
+                                    {fitStatus ?? 'Generate only .fit file without Email and Password.'}
                                 </a>
+                                {fitFile && <div className="mb-2 text-sm text-center text-green-700">
+                                    &quot;{fitFile.name}&quot; is ready. If the download did not start,{' '}
+                                    {typeof navigator !== 'undefined' && navigator.canShare?.({ files: [fitFile] })
+                                        ? <><button type="button" className="underline" onClick={shareFitFile}>share it</button> to save it to Files or open it in another app.</>
+                                        : <><button type="button" className="underline" onClick={() => downloadFile(fitFile)}>download it again</button>.</>}
+                                </div>}
                                 <span>It can be used to manually upload data to the <a href='https://connect.garmin.com/modern/import-data' className="underline" target='_blank' >
                                     Garmin Connect website
                                 </a> in case you don&apos;t want to provide your credentials or if the API has a problem with too many requests.</span>
